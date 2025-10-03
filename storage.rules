@@ -1,0 +1,54 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserId() {
+      return request.auth.uid;
+    }
+    
+    function belongsToOrganization(orgId) {
+      return isAuthenticated() && 
+             firestore.exists(/databases/(default)/documents/users/$(getUserId())) &&
+             firestore.get(/databases/(default)/documents/users/$(getUserId())).data.organizationId == orgId;
+    }
+    
+    function isValidFileType() {
+      return request.resource.contentType.matches('image/.*') ||
+             request.resource.contentType == 'application/pdf' ||
+             request.resource.contentType == 'application/msword' ||
+             request.resource.contentType == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+             request.resource.contentType == 'application/vnd.ms-excel' ||
+             request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    }
+    
+    function isValidFileSize() {
+      return request.resource.size <= 10 * 1024 * 1024; // 10MB
+    }
+    
+    // Organization files
+    match /{orgId}/{allPaths=**} {
+      allow read: if belongsToOrganization(orgId);
+      allow write: if belongsToOrganization(orgId) && 
+                      isValidFileType() && 
+                      isValidFileSize();
+    }
+    
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if getUserId() == userId && 
+                      isValidFileType() && 
+                      isValidFileSize();
+    }
+    
+    // Public files (read-only)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+  }
+}

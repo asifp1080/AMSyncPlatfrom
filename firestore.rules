@@ -1,0 +1,226 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserOrgId() {
+      return request.auth.token.orgId;
+    }
+    
+    function getUserRole() {
+      return request.auth.token.role;
+    }
+    
+    function getAllowedLocationIds() {
+      return request.auth.token.allowedLocationIds;
+    }
+    
+    function isOwnerOrAdmin() {
+      return getUserRole() in ['owner', 'admin'];
+    }
+    
+    function isManager() {
+      return getUserRole() == 'manager';
+    }
+    
+    function canAccessLocation(locationId) {
+      return locationId in getAllowedLocationIds();
+    }
+    
+    function belongsToSameOrg(resourceOrgId) {
+      return getUserOrgId() == resourceOrgId;
+    }
+
+    // Organizations - only owners and admins can manage
+    match /organizations/{orgId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(orgId);
+      allow write: if isAuthenticated() && belongsToSameOrg(orgId) && isOwnerOrAdmin();
+    }
+
+    // Entities - org-scoped access
+    match /entities/{entityId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      allow write: if isAuthenticated() && belongsToSameOrg(resource.data.orgId) && isOwnerOrAdmin();
+    }
+
+    // Locations - org-scoped access
+    match /locations/{locationId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      allow write: if isAuthenticated() && belongsToSameOrg(resource.data.orgId) && isOwnerOrAdmin();
+    }
+
+    // Users - org-scoped with role-based restrictions
+    match /users/{userId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      
+      // Only owners and admins can create/update users
+      allow create: if isAuthenticated() && 
+                   belongsToSameOrg(request.resource.data.orgId) && 
+                   isOwnerOrAdmin();
+      
+      allow update: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) && 
+                   (
+                     // Owners and admins can update any user
+                     isOwnerOrAdmin() ||
+                     // Users can update their own profile (but not role or locations)
+                     (request.auth.uid == userId && 
+                      request.resource.data.role == resource.data.role &&
+                      request.resource.data.directLocationIds == resource.data.directLocationIds &&
+                      request.resource.data.groupIds == resource.data.groupIds)
+                   );
+      
+      allow delete: if isAuthenticated() && belongsToSameOrg(resource.data.orgId) && isOwnerOrAdmin();
+    }
+
+    // Location Groups - org-scoped with manager permissions
+    match /locationGroups/{groupId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      
+      allow create: if isAuthenticated() && 
+                   belongsToSameOrg(request.resource.data.orgId) && 
+                   (isOwnerOrAdmin() || isManager());
+      
+      allow update: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) && 
+                   (isOwnerOrAdmin() || isManager());
+      
+      allow delete: if isAuthenticated() && belongsToSameOrg(resource.data.orgId) && isOwnerOrAdmin();
+    }
+
+    // Preferences - org-scoped, admin-only writes
+    match /preferences/{orgId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(orgId);
+      allow write: if isAuthenticated() && belongsToSameOrg(orgId) && isOwnerOrAdmin();
+    }
+
+    // Insurance Companies - org-scoped, admin-only writes
+    match /insurance_companies/{companyId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      allow write: if isAuthenticated() && belongsToSameOrg(resource.data.orgId) && (isOwnerOrAdmin() || isManager());
+    }
+
+    // Product Type Groups - org-scoped, admin-only writes
+    match /product_type_groups/{groupId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      allow write: if isAuthenticated() && belongsToSameOrg(resource.data.orgId) && (isOwnerOrAdmin() || isManager());
+    }
+
+    // Insurance Products - org-scoped, admin-only writes
+    match /insurance_products/{productId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      allow write: if isAuthenticated() && belongsToSameOrg(resource.data.orgId) && (isOwnerOrAdmin() || isManager());
+    }
+
+    // Policies - location-based access control with enhanced rules
+    match /policies/{policyId} {
+      allow read: if isAuthenticated() && 
+                 belongsToSameOrg(resource.data.orgId) &&
+                 canAccessLocation(resource.data.locationId);
+      
+      allow create: if isAuthenticated() && 
+                   belongsToSameOrg(request.resource.data.orgId) &&
+                   canAccessLocation(request.resource.data.locationId) &&
+                   // Prevent backdating effective dates for non-admins
+                   (isOwnerOrAdmin() || request.resource.data.effectiveDate >= request.time.toDate());
+      
+      allow update: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) &&
+                   canAccessLocation(resource.data.locationId) &&
+                   canAccessLocation(request.resource.data.locationId) &&
+                   // Prevent backdating effective dates for non-admins
+                   (isOwnerOrAdmin() || 
+                    request.resource.data.effectiveDate == resource.data.effectiveDate ||
+                    request.resource.data.effectiveDate >= request.time.toDate());
+      
+      allow delete: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) &&
+                   canAccessLocation(resource.data.locationId) &&
+                   (isOwnerOrAdmin() || isManager());
+    }
+
+    // Transactions - location-based access control
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && belongsToSameOrg(resource.data.orgId);
+      allow create, update: if isAuthenticated() && 
+                           belongsToSameOrg(request.resource.data.orgId) &&
+                           canAccessLocation(request.resource.data.performedAtLocationId);
+    }
+
+    // Counters - system access only for receipt numbering
+    match /counters/{counterId} {
+      allow read: if isAuthenticated() && 
+                 counterId.matches('.*_receipt') && 
+                 belongsToSameOrg(counterId.split('_')[0]);
+      // Write access handled by Cloud Functions only
+      allow write: if false;
+    }
+
+    // Customers - location-based access control
+    match /customers/{customerId} {
+      allow read: if isAuthenticated() && 
+                 belongsToSameOrg(resource.data.orgId) &&
+                 canAccessLocation(resource.data.homeLocationId);
+      
+      allow create: if isAuthenticated() && 
+                   belongsToSameOrg(request.resource.data.orgId) &&
+                   canAccessLocation(request.resource.data.homeLocationId);
+      
+      allow update: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) &&
+                   canAccessLocation(resource.data.homeLocationId) &&
+                   (
+                     // Allow updating if new homeLocationId is also accessible
+                     canAccessLocation(request.resource.data.homeLocationId) ||
+                     // Prevent non-admins from changing homeLocationId
+                     (request.resource.data.homeLocationId == resource.data.homeLocationId && !isOwnerOrAdmin())
+                   );
+      
+      allow delete: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) &&
+                   canAccessLocation(resource.data.homeLocationId) &&
+                   (isOwnerOrAdmin() || isManager());
+    }
+
+    // ============= SPRINT 5 COLLECTIONS =============
+
+    // Import Jobs - org-scoped, manager+ read, system write
+    match /importJobs/{jobId} {
+      allow read: if isAuthenticated() && 
+                 belongsToSameOrg(resource.data.orgId) && 
+                 (isOwnerOrAdmin() || isManager());
+      allow create: if isAuthenticated() && 
+                   belongsToSameOrg(request.resource.data.orgId) && 
+                   request.auth.uid == request.resource.data.createdBy;
+      // Updates handled by import functions only
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Quotes - org-scoped, manager+ read, system write
+    match /quotes/{quoteId} {
+      allow read: if isAuthenticated() && 
+                 belongsToSameOrg(resource.data.orgId) && 
+                 (isOwnerOrAdmin() || isManager());
+      // Write access handled by import functions only
+      allow write: if false;
+    }
+
+    // TurboRater file uploads - temporary storage for processing
+    match /turboraterUploads/{orgId}/{uploadId} {
+      allow read, write: if isAuthenticated() && 
+                        belongsToSameOrg(orgId) && 
+                        (isOwnerOrAdmin() || isManager());
+    }
+
+    // Default deny rule for any other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "amsync-dev",
+    "dev": "amsync-dev",
+    "prod": "amsync-prod"
+  }
+}
