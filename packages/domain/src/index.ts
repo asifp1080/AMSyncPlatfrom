@@ -16,6 +16,9 @@ export * from "./schemas/reporting";
 export * from "./schemas/gusto";
 export * from "./schemas/import";
 export * from "./types";
+export * from "./document";
+export * from "./notification";
+export * from "./support";
 
 // Export location group as locationGroup for consistency
 export {

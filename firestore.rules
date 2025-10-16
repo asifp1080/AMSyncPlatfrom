@@ -167,6 +167,15 @@ service cloud.firestore {
                  belongsToSameOrg(resource.data.orgId) &&
                  canAccessLocation(resource.data.homeLocationId);
       
+      // Customer portal: customers can read their own record
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff access (existing)
+                   (belongsToSameOrg(resource.data.orgId) && canAccessLocation(resource.data.homeLocationId)) ||
+                   // Customer self-access
+                   request.auth.uid == customerId
+                 );
+      
       allow create: if isAuthenticated() && 
                    belongsToSameOrg(request.resource.data.orgId) &&
                    canAccessLocation(request.resource.data.homeLocationId);
@@ -216,6 +225,160 @@ service cloud.firestore {
       allow read, write: if isAuthenticated() && 
                         belongsToSameOrg(orgId) && 
                         (isOwnerOrAdmin() || isManager());
+    }
+
+    // Policies - customers can read their own policies
+    match /policies/{policyId} {
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff access (existing)
+                   (belongsToSameOrg(resource.data.orgId) && canAccessLocation(resource.data.locationId)) ||
+                   // Customer self-access
+                   request.auth.uid == resource.data.customerRef
+                 );
+      
+      allow create: if isAuthenticated() && 
+                   belongsToSameOrg(request.resource.data.orgId) &&
+                   canAccessLocation(request.resource.data.locationId) &&
+                   // Prevent backdating effective dates for non-admins
+                   (isOwnerOrAdmin() || request.resource.data.effectiveDate >= request.time.toDate());
+      
+      allow update: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) &&
+                   canAccessLocation(resource.data.locationId) &&
+                   canAccessLocation(request.resource.data.locationId) &&
+                   // Prevent backdating effective dates for non-admins
+                   (isOwnerOrAdmin() || 
+                    request.resource.data.effectiveDate == resource.data.effectiveDate ||
+                    request.resource.data.effectiveDate >= request.time.toDate());
+      
+      allow delete: if isAuthenticated() && 
+                   belongsToSameOrg(resource.data.orgId) &&
+                   canAccessLocation(resource.data.locationId) &&
+                   (isOwnerOrAdmin() || isManager());
+    }
+
+    // Transactions - customers can read their own transactions
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff access (existing)
+                   belongsToSameOrg(resource.data.orgId) ||
+                   // Customer self-access
+                   request.auth.uid == resource.data.customerRef
+                 );
+      
+      allow create, update: if isAuthenticated() && 
+                           belongsToSameOrg(request.resource.data.orgId) &&
+                           canAccessLocation(request.resource.data.performedAtLocationId);
+    }
+
+    // Service Requests - new collection for customer portal
+    match /serviceRequests/{requestId} {
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff can read all requests in their org
+                   belongsToSameOrg(resource.data.orgId) ||
+                   // Customers can read their own requests
+                   request.auth.uid == resource.data.customerId
+                 );
+      
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.customerId &&
+                   request.resource.data.status == 'OPEN';
+      
+      allow update: if isAuthenticated() && 
+                   (
+                     // Staff can update
+                     (belongsToSameOrg(resource.data.orgId) && (isOwnerOrAdmin() || isManager())) ||
+                     // Customers can add messages to their own requests
+                     (request.auth.uid == resource.data.customerId && 
+                      resource.data.status == request.resource.data.status)
+                   );
+    }
+
+    // Preferences - customers can read for branding
+    match /preferences/{orgId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && belongsToSameOrg(orgId) && isOwnerOrAdmin();
+    }
+
+    // ============= SPRINT 8: CUSTOMER PORTAL =============
+
+    // Customers can read their own data
+    match /customers/{customerId} {
+      // ... keep existing rules ...
+      
+      // Customer portal: customers can read their own record
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff access (existing)
+                   (belongsToSameOrg(resource.data.orgId) && canAccessLocation(resource.data.homeLocationId)) ||
+                   // Customer self-access
+                   request.auth.uid == customerId
+                 );
+      
+      // ... keep existing create/update/delete rules ...
+    }
+
+    // Policies - customers can read their own policies
+    match /policies/{policyId} {
+      // ... keep existing rules ...
+      
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff access (existing)
+                   (belongsToSameOrg(resource.data.orgId) && canAccessLocation(resource.data.locationId)) ||
+                   // Customer self-access
+                   request.auth.uid == resource.data.customerRef
+                 );
+      
+      // ... keep existing create/update/delete rules ...
+    }
+
+    // Transactions - customers can read their own transactions
+    match /transactions/{transactionId} {
+      // ... keep existing rules ...
+      
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff access (existing)
+                   belongsToSameOrg(resource.data.orgId) ||
+                   // Customer self-access
+                   request.auth.uid == resource.data.customerRef
+                 );
+      
+      // ... keep existing create/update rules ...
+    }
+
+    // Service Requests - new collection for customer portal
+    match /serviceRequests/{requestId} {
+      allow read: if isAuthenticated() && 
+                 (
+                   // Staff can read all requests in their org
+                   belongsToSameOrg(resource.data.orgId) ||
+                   // Customers can read their own requests
+                   request.auth.uid == resource.data.customerId
+                 );
+      
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.customerId &&
+                   request.resource.data.status == 'OPEN';
+      
+      allow update: if isAuthenticated() && 
+                   (
+                     // Staff can update
+                     (belongsToSameOrg(resource.data.orgId) && (isOwnerOrAdmin() || isManager())) ||
+                     // Customers can add messages to their own requests
+                     (request.auth.uid == resource.data.customerId && 
+                      resource.data.status == request.resource.data.status)
+                   );
+    }
+
+    // Preferences - customers can read for branding
+    match /preferences/{orgId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && belongsToSameOrg(orgId) && isOwnerOrAdmin();
     }
 
     // Default deny rule for any other collections
