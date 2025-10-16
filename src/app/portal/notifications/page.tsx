@@ -21,7 +21,7 @@ import PortalShell from "@/components/portal/PortalShell";
 
 interface Notification {
   id: string;
-  type: 'policy_update' | 'payment' | 'document' | 'chat' | 'system';
+  type: "policy_update" | "payment" | "document" | "chat" | "system";
   title: string;
   body: string;
   relatedId?: string;
@@ -79,13 +79,13 @@ const mockNotifications: Notification[] = [
 
 const getNotificationIcon = (type: string) => {
   switch (type) {
-    case 'policy_update':
+    case "policy_update":
       return <Shield className="h-5 w-5 text-blue-600" />;
-    case 'payment':
+    case "payment":
       return <CreditCard className="h-5 w-5 text-green-600" />;
-    case 'document':
+    case "document":
       return <FileText className="h-5 w-5 text-orange-600" />;
-    case 'chat':
+    case "chat":
       return <MessageCircle className="h-5 w-5 text-purple-600" />;
     default:
       return <Bell className="h-5 w-5 text-slate-600" />;
@@ -94,52 +94,53 @@ const getNotificationIcon = (type: string) => {
 
 const getNotificationColor = (type: string) => {
   switch (type) {
-    case 'policy_update':
-      return 'bg-blue-100 text-blue-800';
-    case 'payment':
-      return 'bg-green-100 text-green-800';
-    case 'document':
-      return 'bg-orange-100 text-orange-800';
-    case 'chat':
-      return 'bg-purple-100 text-purple-800';
+    case "policy_update":
+      return "bg-blue-100 text-blue-800";
+    case "payment":
+      return "bg-green-100 text-green-800";
+    case "document":
+      return "bg-orange-100 text-orange-800";
+    case "chat":
+      return "bg-purple-100 text-purple-800";
     default:
-      return 'bg-slate-100 text-slate-800';
+      return "bg-slate-100 text-slate-800";
   }
 };
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
-  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-  
-  if (diffInHours < 1) return 'Just now';
+  const diffInHours = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60 * 60),
+  );
+
+  if (diffInHours < 1) return "Just now";
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) return `${diffInDays}d ago`;
-  
+
   return date.toLocaleDateString();
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] =
+    useState<Notification[]>(mockNotifications);
   const [activeTab, setActiveTab] = useState("all");
   const { toast } = useToast();
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.read).length;
 
   const markAsRead = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id
-          ? { ...notification, read: true }
-          : notification
-      )
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        notification.id === id ? { ...notification, read: true } : notification,
+      ),
     );
   };
 
   const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
+    setNotifications((prev) =>
+      prev.map((notification) => ({ ...notification, read: true })),
     );
     toast({
       title: "All notifications marked as read",
@@ -147,13 +148,13 @@ export default function NotificationsPage() {
   };
 
   const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(n => n.id !== id));
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
     toast({
       title: "Notification deleted",
     });
   };
 
-  const filteredNotifications = notifications.filter(notification => {
+  const filteredNotifications = notifications.filter((notification) => {
     if (activeTab === "all") return true;
     if (activeTab === "unread") return !notification.read;
     return notification.type === activeTab;
@@ -162,22 +163,24 @@ export default function NotificationsPage() {
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.read) {
       markAsRead(notification.id);
+      // TODO: Update Firestore
+      // await updateDoc(doc(db, 'notifications', notification.id), { read: true });
     }
 
     // Navigate to related page based on type and relatedId
     if (notification.relatedId) {
       switch (notification.type) {
-        case 'policy_update':
-          // Navigate to policy details
+        case "policy_update":
+          window.location.href = `/portal/policies/${notification.relatedId}`;
           break;
-        case 'document':
-          // Navigate to documents
+        case "document":
+          window.location.href = "/portal/documents";
           break;
-        case 'chat':
-          // Navigate to support chat
+        case "chat":
+          window.location.href = `/portal/support/threads/${notification.relatedId}`;
           break;
-        case 'payment':
-          // Navigate to payment history
+        case "payment":
+          window.location.href = "/portal/payments/history";
           break;
       }
     }
@@ -211,7 +214,9 @@ export default function NotificationsPage() {
                   <Bell className="h-5 w-5 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{notifications.length}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {notifications.length}
+                  </p>
                   <p className="text-sm text-slate-600">Total</p>
                 </div>
               </div>
@@ -224,7 +229,9 @@ export default function NotificationsPage() {
                   <Bell className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{unreadCount}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {unreadCount}
+                  </p>
                   <p className="text-sm text-slate-600">Unread</p>
                 </div>
               </div>
@@ -276,7 +283,7 @@ export default function NotificationsPage() {
                         key={notification.id}
                         className={cn(
                           "flex items-start gap-4 p-4 rounded-lg border cursor-pointer transition-colors hover:bg-slate-50",
-                          !notification.read && "bg-blue-50 border-blue-200"
+                          !notification.read && "bg-blue-50 border-blue-200",
                         )}
                         onClick={() => handleNotificationClick(notification)}
                       >
@@ -287,10 +294,12 @@ export default function NotificationsPage() {
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
-                                <h3 className={cn(
-                                  "font-medium text-slate-900",
-                                  !notification.read && "font-semibold"
-                                )}>
+                                <h3
+                                  className={cn(
+                                    "font-medium text-slate-900",
+                                    !notification.read && "font-semibold",
+                                  )}
+                                >
                                   {notification.title}
                                 </h3>
                                 {!notification.read && (
@@ -301,8 +310,12 @@ export default function NotificationsPage() {
                                 {notification.body}
                               </p>
                               <div className="flex items-center gap-3">
-                                <Badge className={getNotificationColor(notification.type)}>
-                                  {notification.type.replace('_', ' ')}
+                                <Badge
+                                  className={getNotificationColor(
+                                    notification.type,
+                                  )}
+                                >
+                                  {notification.type.replace("_", " ")}
                                 </Badge>
                                 <span className="text-xs text-slate-500">
                                   {formatRelativeTime(notification.createdAt)}

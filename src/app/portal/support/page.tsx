@@ -16,7 +16,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
@@ -26,7 +32,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 interface SupportThread {
   id: string;
   subject: string;
-  status: 'OPEN' | 'PENDING' | 'CLOSED';
+  status: "OPEN" | "PENDING" | "CLOSED";
   createdAt: Date;
   lastUpdatedAt: Date;
   messageCount: number;
@@ -51,7 +57,8 @@ const mockThreads: SupportThread[] = [
     createdAt: new Date("2024-01-12T09:15:00"),
     lastUpdatedAt: new Date("2024-01-14T16:20:00"),
     messageCount: 5,
-    lastMessage: "We're reviewing your claim and will get back to you within 24 hours.",
+    lastMessage:
+      "We're reviewing your claim and will get back to you within 24 hours.",
   },
   {
     id: "3",
@@ -66,11 +73,11 @@ const mockThreads: SupportThread[] = [
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'OPEN':
+    case "OPEN":
       return <MessageCircle className="h-4 w-4 text-green-600" />;
-    case 'PENDING':
+    case "PENDING":
       return <Clock className="h-4 w-4 text-amber-600" />;
-    case 'CLOSED':
+    case "CLOSED":
       return <CheckCircle className="h-4 w-4 text-slate-600" />;
     default:
       return <MessageCircle className="h-4 w-4 text-slate-600" />;
@@ -79,27 +86,29 @@ const getStatusIcon = (status: string) => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'OPEN':
-      return 'bg-green-100 text-green-800';
-    case 'PENDING':
-      return 'bg-amber-100 text-amber-800';
-    case 'CLOSED':
-      return 'bg-slate-100 text-slate-800';
+    case "OPEN":
+      return "bg-green-100 text-green-800";
+    case "PENDING":
+      return "bg-amber-100 text-amber-800";
+    case "CLOSED":
+      return "bg-slate-100 text-slate-800";
     default:
-      return 'bg-slate-100 text-slate-800';
+      return "bg-slate-100 text-slate-800";
   }
 };
 
 const formatRelativeTime = (date: Date) => {
   const now = new Date();
-  const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-  
-  if (diffInHours < 1) return 'Just now';
+  const diffInHours = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60 * 60),
+  );
+
+  if (diffInHours < 1) return "Just now";
   if (diffInHours < 24) return `${diffInHours}h ago`;
-  
+
   const diffInDays = Math.floor(diffInHours / 24);
   if (diffInDays < 7) return `${diffInDays}d ago`;
-  
+
   return date.toLocaleDateString();
 };
 
@@ -111,10 +120,10 @@ export default function SupportPage() {
   const { customer } = useAuth();
   const { toast } = useToast();
 
-  const openThreads = threads.filter(t => t.status === 'OPEN').length;
-  const pendingThreads = threads.filter(t => t.status === 'PENDING').length;
+  const openThreads = threads.filter((t) => t.status === "OPEN").length;
+  const pendingThreads = threads.filter((t) => t.status === "PENDING").length;
 
-  const handleCreateThread = () => {
+  const handleCreateThread = async () => {
     if (!newSubject.trim() || !newMessage.trim()) {
       toast({
         title: "Please fill in all fields",
@@ -123,25 +132,51 @@ export default function SupportPage() {
       return;
     }
 
-    const newThread: SupportThread = {
-      id: Date.now().toString(),
-      subject: newSubject,
-      status: 'OPEN',
-      createdAt: new Date(),
-      lastUpdatedAt: new Date(),
-      messageCount: 1,
-      lastMessage: newMessage.substring(0, 100) + (newMessage.length > 100 ? '...' : ''),
-    };
+    try {
+      // TODO: Create thread in Firestore
+      // const threadRef = await addDoc(collection(db, 'supportThreads'), {
+      //   orgId: customer.orgId,
+      //   customerId: customer.id,
+      //   subject: newSubject,
+      //   status: 'OPEN',
+      //   createdAt: serverTimestamp(),
+      //   lastUpdatedAt: serverTimestamp(),
+      // });
+      //
+      // await addDoc(collection(db, 'supportThreads', threadRef.id, 'messages'), {
+      //   sender: 'customer',
+      //   text: newMessage,
+      //   sentAt: serverTimestamp(),
+      // });
 
-    setThreads(prev => [newThread, ...prev]);
-    setNewSubject("");
-    setNewMessage("");
-    setNewThreadOpen(false);
+      const newThread: SupportThread = {
+        id: Date.now().toString(),
+        subject: newSubject,
+        status: "OPEN",
+        createdAt: new Date(),
+        lastUpdatedAt: new Date(),
+        messageCount: 1,
+        lastMessage:
+          newMessage.substring(0, 100) + (newMessage.length > 100 ? "..." : ""),
+      };
 
-    toast({
-      title: "Support thread created",
-      description: "We'll respond to your message soon.",
-    });
+      setThreads((prev) => [newThread, ...prev]);
+      setNewSubject("");
+      setNewMessage("");
+      setNewThreadOpen(false);
+
+      toast({
+        title: "Support thread created",
+        description: "We'll respond to your message soon.",
+      });
+    } catch (error) {
+      console.error("Error creating thread:", error);
+      toast({
+        title: "Failed to create thread",
+        description: "Please try again later.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -187,7 +222,10 @@ export default function SupportPage() {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setNewThreadOpen(false)}>
+                  <Button
+                    variant="outline"
+                    onClick={() => setNewThreadOpen(false)}
+                  >
                     Cancel
                   </Button>
                   <Button onClick={handleCreateThread}>
@@ -208,7 +246,9 @@ export default function SupportPage() {
                   <MessageCircle className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{openThreads}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {openThreads}
+                  </p>
                   <p className="text-sm text-slate-600">Open</p>
                 </div>
               </div>
@@ -221,7 +261,9 @@ export default function SupportPage() {
                   <Clock className="h-5 w-5 text-amber-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{pendingThreads}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {pendingThreads}
+                  </p>
                   <p className="text-sm text-slate-600">Pending</p>
                 </div>
               </div>
@@ -234,7 +276,9 @@ export default function SupportPage() {
                   <CheckCircle className="h-5 w-5 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-slate-900">{threads.length}</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {threads.length}
+                  </p>
                   <p className="text-sm text-slate-600">Total</p>
                 </div>
               </div>
@@ -278,7 +322,12 @@ export default function SupportPage() {
                             <h3 className="font-medium text-slate-900 truncate">
                               {thread.subject}
                             </h3>
-                            <Badge className={cn("flex-shrink-0", getStatusColor(thread.status))}>
+                            <Badge
+                              className={cn(
+                                "flex-shrink-0",
+                                getStatusColor(thread.status),
+                              )}
+                            >
                               {thread.status}
                             </Badge>
                           </div>
@@ -289,8 +338,12 @@ export default function SupportPage() {
                           )}
                           <div className="flex items-center gap-4 text-xs text-slate-500">
                             <span>{thread.messageCount} messages</span>
-                            <span>Updated {formatRelativeTime(thread.lastUpdatedAt)}</span>
-                            <span>Created {formatRelativeTime(thread.createdAt)}</span>
+                            <span>
+                              Updated {formatRelativeTime(thread.lastUpdatedAt)}
+                            </span>
+                            <span>
+                              Created {formatRelativeTime(thread.createdAt)}
+                            </span>
                           </div>
                         </div>
                       </div>

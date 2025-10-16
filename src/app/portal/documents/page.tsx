@@ -27,7 +27,7 @@ interface DocumentFile {
   fileType: string;
   size: number;
   uploadedAt: Date;
-  status: 'RECEIVED' | 'REVIEWED' | 'NEEDS_INFO';
+  status: "RECEIVED" | "REVIEWED" | "NEEDS_INFO";
   notes?: string;
   downloadUrl?: string;
 }
@@ -44,7 +44,7 @@ const mockDocuments: DocumentFile[] = [
     notes: "Document approved and processed",
   },
   {
-    id: "2", 
+    id: "2",
     fileName: "drivers_license.jpg",
     fileType: "image/jpeg",
     size: 1048576,
@@ -54,7 +54,7 @@ const mockDocuments: DocumentFile[] = [
   },
   {
     id: "3",
-    fileName: "vehicle_registration.pdf", 
+    fileName: "vehicle_registration.pdf",
     fileType: "application/pdf",
     size: 512000,
     uploadedAt: new Date("2024-01-08"),
@@ -64,9 +64,9 @@ const mockDocuments: DocumentFile[] = [
 
 const getStatusIcon = (status: string) => {
   switch (status) {
-    case 'REVIEWED':
+    case "REVIEWED":
       return <CheckCircle className="h-4 w-4 text-green-600" />;
-    case 'NEEDS_INFO':
+    case "NEEDS_INFO":
       return <AlertCircle className="h-4 w-4 text-amber-600" />;
     default:
       return <Clock className="h-4 w-4 text-blue-600" />;
@@ -75,21 +75,21 @@ const getStatusIcon = (status: string) => {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'REVIEWED':
-      return 'bg-green-100 text-green-800';
-    case 'NEEDS_INFO':
-      return 'bg-amber-100 text-amber-800';
+    case "REVIEWED":
+      return "bg-green-100 text-green-800";
+    case "NEEDS_INFO":
+      return "bg-amber-100 text-amber-800";
     default:
-      return 'bg-blue-100 text-blue-800';
+      return "bg-blue-100 text-blue-800";
   }
 };
 
 const formatFileSize = (bytes: number) => {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 };
 
 export default function DocumentsPage() {
@@ -99,85 +99,118 @@ export default function DocumentsPage() {
   const { customer } = useAuth();
   const { toast } = useToast();
 
-  const onDrop = useCallback(async (acceptedFiles: File[]) => {
-    setUploading(true);
-    setUploadProgress(0);
+  const onDrop = useCallback(
+    async (acceptedFiles: File[]) => {
+      setUploading(true);
+      setUploadProgress(0);
 
-    for (const file of acceptedFiles) {
-      // Validate file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: `${file.name} exceeds the 10MB limit`,
-          variant: "destructive",
-        });
-        continue;
+      for (const file of acceptedFiles) {
+        // Validate file size (10MB limit)
+        if (file.size > 10 * 1024 * 1024) {
+          toast({
+            title: "File too large",
+            description: `${file.name} exceeds the 10MB limit`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        // Validate file type
+        const allowedTypes = [
+          "application/pdf",
+          "image/jpeg",
+          "image/png",
+          "image/gif",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ];
+
+        if (!allowedTypes.includes(file.type)) {
+          toast({
+            title: "Invalid file type",
+            description: `${file.name} is not a supported file type`,
+            variant: "destructive",
+          });
+          continue;
+        }
+
+        try {
+          // TODO: Replace with Firebase Storage upload
+          // const storageRef = ref(storage, `documents/${customer.id}/${file.name}`);
+          // const uploadTask = uploadBytesResumable(storageRef, file);
+
+          // Simulate upload progress
+          for (let i = 0; i <= 100; i += 10) {
+            setUploadProgress(i);
+            await new Promise((resolve) => setTimeout(resolve, 100));
+          }
+
+          // TODO: Create document record in Firestore
+          // const docRef = await addDoc(collection(db, 'customerDocuments'), {...});
+
+          // Add to documents list
+          const newDocument: DocumentFile = {
+            id: Date.now().toString(),
+            fileName: file.name,
+            fileType: file.type,
+            size: file.size,
+            uploadedAt: new Date(),
+            status: "RECEIVED",
+          };
+
+          setDocuments((prev) => [newDocument, ...prev]);
+
+          toast({
+            title: "Upload successful",
+            description: `${file.name} has been uploaded successfully`,
+          });
+        } catch (error) {
+          console.error("Upload error:", error);
+          toast({
+            title: "Upload failed",
+            description: `Failed to upload ${file.name}`,
+            variant: "destructive",
+          });
+        }
       }
 
-      // Validate file type
-      const allowedTypes = [
-        'application/pdf',
-        'image/jpeg',
-        'image/png',
-        'image/gif',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
-      ];
-      
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: `${file.name} is not a supported file type`,
-          variant: "destructive",
-        });
-        continue;
-      }
-
-      // Simulate upload progress
-      for (let i = 0; i <= 100; i += 10) {
-        setUploadProgress(i);
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-
-      // Add to documents list
-      const newDocument: DocumentFile = {
-        id: Date.now().toString(),
-        fileName: file.name,
-        fileType: file.type,
-        size: file.size,
-        uploadedAt: new Date(),
-        status: 'RECEIVED',
-      };
-
-      setDocuments(prev => [newDocument, ...prev]);
-
-      toast({
-        title: "Upload successful",
-        description: `${file.name} has been uploaded successfully`,
-      });
-    }
-
-    setUploading(false);
-    setUploadProgress(0);
-  }, [toast]);
+      setUploading(false);
+      setUploadProgress(0);
+    },
+    [toast],
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf'],
-      'image/*': ['.jpeg', '.jpg', '.png', '.gif'],
-      'application/msword': ['.doc'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      "application/pdf": [".pdf"],
+      "image/*": [".jpeg", ".jpg", ".png", ".gif"],
+      "application/msword": [".doc"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
     },
     multiple: true,
   });
 
-  const handleDownload = (document: DocumentFile) => {
-    // In real implementation, this would use the downloadUrl from Firestore
-    toast({
-      title: "Download started",
-      description: `Downloading ${document.fileName}`,
-    });
+  const handleDownload = async (document: DocumentFile) => {
+    try {
+      // TODO: Replace with Firebase Storage download
+      // const storageRef = ref(storage, document.downloadUrl);
+      // const url = await getDownloadURL(storageRef);
+      // window.open(url, '_blank');
+
+      toast({
+        title: "Download started",
+        description: `Downloading ${document.fileName}`,
+      });
+    } catch (error) {
+      console.error("Download error:", error);
+      toast({
+        title: "Download failed",
+        description: `Failed to download ${document.fileName}`,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -206,7 +239,7 @@ export default function DocumentsPage() {
                 "border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors",
                 isDragActive
                   ? "border-[#4169E1] bg-blue-50"
-                  : "border-slate-300 hover:border-slate-400"
+                  : "border-slate-300 hover:border-slate-400",
               )}
             >
               <input {...getInputProps()} />
@@ -229,7 +262,9 @@ export default function DocumentsPage() {
               <div className="mt-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-sm text-slate-600">Uploading...</span>
-                  <span className="text-sm text-slate-600">{uploadProgress}%</span>
+                  <span className="text-sm text-slate-600">
+                    {uploadProgress}%
+                  </span>
                 </div>
                 <Progress value={uploadProgress} className="h-2" />
               </div>
@@ -281,10 +316,13 @@ export default function DocumentsPage() {
                     </div>
                     <div className="flex items-center gap-3">
                       <Badge
-                        className={cn("flex items-center gap-1", getStatusColor(document.status))}
+                        className={cn(
+                          "flex items-center gap-1",
+                          getStatusColor(document.status),
+                        )}
                       >
                         {getStatusIcon(document.status)}
-                        {document.status.replace('_', ' ')}
+                        {document.status.replace("_", " ")}
                       </Badge>
                       <Button
                         variant="outline"

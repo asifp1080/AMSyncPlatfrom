@@ -52,18 +52,19 @@ interface PortalShellProps {
   brandLogo?: string;
 }
 
-export default function PortalShell({ 
-  children, 
+export default function PortalShell({
+  children,
   brandName = "AMSync",
-  brandLogo 
+  brandLogo,
 }: PortalShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const pathname = usePathname();
   const { customer, signOut } = useAuth();
 
-  // Mock notification count - will be replaced with real data
-  const unreadCount = 3;
+  // TODO: Replace with real-time Firestore query
+  // const unreadCount = useNotificationCount(customer?.id);
+  const unreadCount = 0; // Will be populated from Firestore
 
   const handleSignOut = async () => {
     try {
@@ -96,7 +97,7 @@ export default function PortalShell({
       <aside
         className={cn(
           "fixed inset-y-0 left-0 z-50 w-64 bg-gradient-to-b from-[#4169E1] to-[#6B5FD8] transform transition-transform duration-200 ease-in-out lg:translate-x-0",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
         )}
       >
         {/* Logo */}
@@ -130,7 +131,8 @@ export default function PortalShell({
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-1">
           {navigation.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + "/");
+            const isActive =
+              pathname === item.href || pathname?.startsWith(item.href + "/");
             return (
               <Link
                 key={item.name}
@@ -139,7 +141,7 @@ export default function PortalShell({
                   "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
                   isActive
                     ? "bg-white/20 text-white backdrop-blur-sm"
-                    : "text-white/80 hover:bg-white/10 hover:text-white"
+                    : "text-white/80 hover:bg-white/10 hover:text-white",
                 )}
               >
                 <item.icon className="h-5 w-5" />
@@ -166,16 +168,19 @@ export default function PortalShell({
           <div className="flex-1" />
 
           {/* Notifications */}
-          <DropdownMenu open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+          <DropdownMenu
+            open={notificationsOpen}
+            onOpenChange={setNotificationsOpen}
+          >
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative">
                 <Bell className="h-5 w-5" />
                 {unreadCount > 0 && (
-                  <Badge 
-                    variant="destructive" 
+                  <Badge
+                    variant="destructive"
                     className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
                   >
-                    {unreadCount > 9 ? '9+' : unreadCount}
+                    {unreadCount > 9 ? "9+" : unreadCount}
                   </Badge>
                 )}
               </Button>
@@ -184,26 +189,49 @@ export default function PortalShell({
               <DropdownMenuLabel>Notifications</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <div className="max-h-96 overflow-y-auto">
-                {/* Mock notifications - will be replaced with real data */}
-                <DropdownMenuItem className="flex flex-col items-start p-4 cursor-pointer">
-                  <div className="font-medium">Policy Updated</div>
-                  <div className="text-sm text-slate-500">Your auto policy has been renewed</div>
-                  <div className="text-xs text-slate-400 mt-1">2 hours ago</div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start p-4 cursor-pointer">
-                  <div className="font-medium">Document Reviewed</div>
-                  <div className="text-sm text-slate-500">Your uploaded document has been processed</div>
-                  <div className="text-xs text-slate-400 mt-1">1 day ago</div>
-                </DropdownMenuItem>
-                <DropdownMenuItem className="flex flex-col items-start p-4 cursor-pointer">
-                  <div className="font-medium">New Message</div>
-                  <div className="text-sm text-slate-500">You have a new message from support</div>
-                  <div className="text-xs text-slate-400 mt-1">2 days ago</div>
-                </DropdownMenuItem>
+                {/* TODO: Replace with real-time Firestore query */}
+                {unreadCount === 0 ? (
+                  <div className="p-4 text-center text-sm text-slate-500">
+                    No new notifications
+                  </div>
+                ) : (
+                  <>
+                    <DropdownMenuItem className="flex flex-col items-start p-4 cursor-pointer">
+                      <div className="font-medium">Policy Updated</div>
+                      <div className="text-sm text-slate-500">
+                        Your auto policy has been renewed
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        2 hours ago
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex flex-col items-start p-4 cursor-pointer">
+                      <div className="font-medium">Document Reviewed</div>
+                      <div className="text-sm text-slate-500">
+                        Your uploaded document has been processed
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        1 day ago
+                      </div>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem className="flex flex-col items-start p-4 cursor-pointer">
+                      <div className="font-medium">New Message</div>
+                      <div className="text-sm text-slate-500">
+                        You have a new message from support
+                      </div>
+                      <div className="text-xs text-slate-400 mt-1">
+                        2 days ago
+                      </div>
+                    </DropdownMenuItem>
+                  </>
+                )}
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link href="/portal/notifications" className="w-full text-center">
+                <Link
+                  href="/portal/notifications"
+                  className="w-full text-center"
+                >
                   View All Notifications
                 </Link>
               </DropdownMenuItem>
@@ -226,7 +254,9 @@ export default function PortalShell({
               <DropdownMenuLabel>
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium">
-                    {customer ? `${customer.firstName} ${customer.lastName}` : "Customer"}
+                    {customer
+                      ? `${customer.firstName} ${customer.lastName}`
+                      : "Customer"}
                   </p>
                   <p className="text-xs text-slate-500">
                     {customer?.email || ""}

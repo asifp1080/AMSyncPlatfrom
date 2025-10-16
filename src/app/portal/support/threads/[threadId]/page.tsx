@@ -16,7 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { cn } from "@/lib/utils";
 import PortalShell from "@/components/portal/PortalShell";
@@ -24,7 +29,7 @@ import { useAuth } from "@/contexts/AuthProvider";
 
 interface Message {
   id: string;
-  sender: 'customer' | 'staff';
+  sender: "customer" | "staff";
   text: string;
   sentAt: Date;
   readByStaff?: boolean;
@@ -33,7 +38,7 @@ interface Message {
 interface SupportThread {
   id: string;
   subject: string;
-  status: 'OPEN' | 'PENDING' | 'CLOSED';
+  status: "OPEN" | "PENDING" | "CLOSED";
   createdAt: Date;
   lastUpdatedAt: Date;
 }
@@ -71,23 +76,23 @@ const mockMessages: Message[] = [
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'OPEN':
-      return 'bg-green-100 text-green-800';
-    case 'PENDING':
-      return 'bg-amber-100 text-amber-800';
-    case 'CLOSED':
-      return 'bg-slate-100 text-slate-800';
+    case "OPEN":
+      return "bg-green-100 text-green-800";
+    case "PENDING":
+      return "bg-amber-100 text-amber-800";
+    case "CLOSED":
+      return "bg-slate-100 text-slate-800";
     default:
-      return 'bg-slate-100 text-slate-800';
+      return "bg-slate-100 text-slate-800";
   }
 };
 
 const formatTime = (date: Date) => {
-  return date.toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
     hour12: true,
   });
 };
@@ -97,12 +102,12 @@ export default function SupportThreadPage() {
   const router = useRouter();
   const { customer } = useAuth();
   const { toast } = useToast();
-  
+
   const [thread, setThread] = useState<SupportThread>(mockThread);
   const [messages, setMessages] = useState<Message[]>(mockMessages);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
-  
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -117,46 +122,79 @@ export default function SupportThreadPage() {
     if (!newMessage.trim() || sending) return;
 
     setSending(true);
-    
-    const message: Message = {
-      id: Date.now().toString(),
-      sender: "customer",
-      text: newMessage,
-      sentAt: new Date(),
-    };
 
-    setMessages(prev => [...prev, message]);
-    setNewMessage("");
-    
-    // Update thread last updated time
-    setThread(prev => ({
-      ...prev,
-      lastUpdatedAt: new Date(),
-    }));
+    try {
+      // TODO: Add message to Firestore
+      // await addDoc(collection(db, 'supportThreads', params.threadId, 'messages'), {
+      //   sender: 'customer',
+      //   text: newMessage,
+      //   sentAt: serverTimestamp(),
+      // });
+      //
+      // await updateDoc(doc(db, 'supportThreads', params.threadId), {
+      //   lastUpdatedAt: serverTimestamp(),
+      // });
 
-    // Simulate sending delay
-    setTimeout(() => {
-      setSending(false);
+      const message: Message = {
+        id: Date.now().toString(),
+        sender: "customer",
+        text: newMessage,
+        sentAt: new Date(),
+      };
+
+      setMessages((prev) => [...prev, message]);
+      setNewMessage("");
+
+      // Update thread last updated time
+      setThread((prev) => ({
+        ...prev,
+        lastUpdatedAt: new Date(),
+      }));
+
       toast({
         title: "Message sent",
         description: "Our support team will respond soon.",
       });
-    }, 500);
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        title: "Failed to send message",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
   };
 
-  const closeThread = () => {
-    setThread(prev => ({ ...prev, status: 'CLOSED' }));
-    toast({
-      title: "Thread closed",
-      description: "This conversation has been marked as resolved.",
-    });
+  const closeThread = async () => {
+    try {
+      // TODO: Update thread status in Firestore
+      // await updateDoc(doc(db, 'supportThreads', params.threadId), {
+      //   status: 'CLOSED',
+      //   lastUpdatedAt: serverTimestamp(),
+      // });
+
+      setThread((prev) => ({ ...prev, status: "CLOSED" }));
+      toast({
+        title: "Thread closed",
+        description: "This conversation has been marked as resolved.",
+      });
+    } catch (error) {
+      console.error("Error closing thread:", error);
+      toast({
+        title: "Failed to close thread",
+        description: "Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -165,15 +203,13 @@ export default function SupportThreadPage() {
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => router.back()}
-            >
+            <Button variant="ghost" size="icon" onClick={() => router.back()}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{thread.subject}</h1>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {thread.subject}
+              </h1>
               <div className="flex items-center gap-2 mt-1">
                 <Badge className={getStatusColor(thread.status)}>
                   {thread.status}
@@ -184,8 +220,8 @@ export default function SupportThreadPage() {
               </div>
             </div>
           </div>
-          
-          {thread.status !== 'CLOSED' && (
+
+          {thread.status !== "CLOSED" && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
@@ -211,39 +247,41 @@ export default function SupportThreadPage() {
                   key={message.id}
                   className={cn(
                     "flex gap-3",
-                    message.sender === 'customer' ? "justify-end" : "justify-start"
+                    message.sender === "customer"
+                      ? "justify-end"
+                      : "justify-start",
                   )}
                 >
-                  {message.sender === 'staff' && (
+                  {message.sender === "staff" && (
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-[#4169E1] rounded-full flex items-center justify-center">
                         <Headphones className="h-4 w-4 text-white" />
                       </div>
                     </div>
                   )}
-                  
+
                   <div
                     className={cn(
                       "max-w-[70%] rounded-lg px-4 py-3",
-                      message.sender === 'customer'
+                      message.sender === "customer"
                         ? "bg-[#4169E1] text-white"
-                        : "bg-slate-100 text-slate-900"
+                        : "bg-slate-100 text-slate-900",
                     )}
                   >
                     <p className="text-sm leading-relaxed">{message.text}</p>
                     <p
                       className={cn(
                         "text-xs mt-2",
-                        message.sender === 'customer'
+                        message.sender === "customer"
                           ? "text-blue-100"
-                          : "text-slate-500"
+                          : "text-slate-500",
                       )}
                     >
                       {formatTime(message.sentAt)}
                     </p>
                   </div>
 
-                  {message.sender === 'customer' && (
+                  {message.sender === "customer" && (
                     <div className="flex-shrink-0">
                       <div className="w-8 h-8 bg-slate-300 rounded-full flex items-center justify-center">
                         <User className="h-4 w-4 text-slate-600" />
@@ -256,7 +294,7 @@ export default function SupportThreadPage() {
             </div>
 
             {/* Message Input */}
-            {thread.status !== 'CLOSED' && (
+            {thread.status !== "CLOSED" && (
               <div className="border-t p-4">
                 <div className="flex gap-3">
                   <div className="flex-1">
@@ -293,11 +331,15 @@ export default function SupportThreadPage() {
               </div>
             )}
 
-            {thread.status === 'CLOSED' && (
+            {thread.status === "CLOSED" && (
               <div className="border-t p-4 text-center">
                 <p className="text-sm text-slate-500">
-                  This conversation has been closed. 
-                  <Button variant="link" className="p-0 ml-1 h-auto" onClick={() => router.push('/portal/support')}>
+                  This conversation has been closed.
+                  <Button
+                    variant="link"
+                    className="p-0 ml-1 h-auto"
+                    onClick={() => router.push("/portal/support")}
+                  >
                     Start a new conversation
                   </Button>
                 </p>
